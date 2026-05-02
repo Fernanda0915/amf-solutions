@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Layout } from "@/components/Layout";
 import { PageHero } from "@/components/PageHero";
-import { Mail, Phone, MapPin, Send, Clock } from "lucide-react";
+import { Mail, Phone, MapPin, Send } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/contacto")({
@@ -16,7 +16,8 @@ export const Route = createFileRoute("/contacto")({
       { property: "og:title", content: "Contacto — AMF Solutions" },
       {
         property: "og:description",
-        content: "Solicita tu cotización: ventas@amfsolutions.mx | 664 213 7845",
+        content:
+          "Solicita tu cotización: ventas@amfsolutions.mx | 664 213 7845",
       },
     ],
   }),
@@ -24,15 +25,33 @@ export const Route = createFileRoute("/contacto")({
 });
 
 function ContactoPage() {
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
 
-  // NOTE: Static demo handler. To enable real submissions, conecta un backend
-  // o un servicio como Formspree / Web3Forms reemplazando esta función.
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSent(true);
-    (e.target as HTMLFormElement).reset();
-    setTimeout(() => setSent(false), 5000);
+    setStatus("sending");
+
+    const form = e.currentTarget;
+    const data = new FormData(form);
+
+    try {
+      const res = await fetch("https://formspree.io/f/mwvyprgz", {
+        method: "POST",
+        body: data,
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (res.ok) {
+        setStatus("success");
+        form.reset();
+      } else {
+        setStatus("error");
+      }
+    } catch {
+      setStatus("error");
+    }
   };
 
   return (
@@ -45,7 +64,8 @@ function ContactoPage() {
 
       <section className="bg-background py-20">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-5 lg:px-8">
-          {/* Info */}
+          
+          {/* INFO */}
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-bold text-navy">Información de contacto</h2>
             <p className="mt-3 text-muted-foreground">
@@ -79,11 +99,15 @@ function ContactoPage() {
             </div>
           </div>
 
-          {/* Form */}
+          {/* FORMULARIO */}
           <form
             onSubmit={handleSubmit}
             className="lg:col-span-3 rounded-2xl border border-border bg-card p-8 shadow-elegant"
           >
+            {/* Config Formspree */}
+            <input type="hidden" name="_subject" value="Nuevo mensaje desde la web AMF" />
+            <input type="text" name="_gotcha" style={{ display: "none" }} />
+
             <h2 className="text-2xl font-bold text-navy">Envíanos un mensaje</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Completa el formulario y un asesor te contactará a la brevedad.
@@ -95,9 +119,11 @@ function ContactoPage() {
               <Field label="Correo electrónico" name="correo" type="email" required />
               <Field label="Teléfono" name="telefono" type="tel" />
             </div>
+
             <div className="mt-5">
               <Field label="Asunto" name="asunto" required />
             </div>
+
             <div className="mt-5">
               <label className="text-sm font-semibold text-navy">Mensaje *</label>
               <textarea
@@ -111,14 +137,22 @@ function ContactoPage() {
 
             <button
               type="submit"
+              disabled={status === "sending"}
               className="mt-6 inline-flex items-center gap-2 rounded-md bg-gradient-accent px-7 py-3.5 text-sm font-semibold text-accent-foreground shadow-soft transition-smooth hover:opacity-90"
             >
-              Enviar mensaje <Send size={16} />
+              {status === "sending" ? "Enviando..." : "Enviar mensaje"} <Send size={16} />
             </button>
 
-            {sent && (
+            {/* MENSAJES */}
+            {status === "success" && (
               <div className="mt-5 rounded-md border border-green-500/30 bg-green-50 px-4 py-3 text-sm text-green-700">
-                ¡Gracias! Hemos recibido tu mensaje. Te contactaremos pronto.
+                ✅ ¡Mensaje enviado correctamente! Te contactaremos pronto.
+              </div>
+            )}
+
+            {status === "error" && (
+              <div className="mt-5 rounded-md border border-red-500/30 bg-red-50 px-4 py-3 text-sm text-red-700">
+                ❌ Hubo un error al enviar. Intenta nuevamente.
               </div>
             )}
           </form>
